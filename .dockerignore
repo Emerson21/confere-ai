@@ -1,0 +1,15 @@
+Dockerfile
+.dockerignore
+node_modules
+npm-debug.log
+.next
+.git
+.gitignore
+.env*.local
+.env
+tests
+coverage
+README.md
+docs
+.agents
+GEMINI.md
