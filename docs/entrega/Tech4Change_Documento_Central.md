@@ -19,7 +19,7 @@
 
 | Nome Completo | RM | Papel / Especialidade | Principais Contribuições no Projeto |
 | :--- | :--- | :--- | :--- |
-| **[Nome do Integrante 1]** | RM [XXXXX] | Product Manager / AI Engineering | Concepção da solução, engenharia de prompts, integração com Google Gemini e Fact Check APIs. |
+| **Emerson da Silva Alonso Haraguchi** | RM 376499 | Head of AI Engineering | Concepção da solução, engenharia de prompts, integração com Google Gemini e Fact Check APIs. |
 | **[Nome do Integrante 2]** | RM [XXXXX] | Fullstack Developer / Clean Architecture | Implementação de Clean Architecture, TDD (27 testes), endpoints e sanitizador Regex de PII. |
 | **[Nome do Integrante 3]** | RM [XXXXX] | Frontend / UX & Acessibilidade | Desenvolvimento de componentes mobile-first (Next.js/Tailwind), microfone com Web Speech API e UI Design. |
 | **[Nome do Integrante 4]** | RM [XXXXX] | Cloud & DevOps Engineer | Conteinerização Docker, configuração no Google Cloud Run, monitoramento e rate limiting. |
