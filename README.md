@@ -154,12 +154,12 @@ docker run -p 3000:3000 -e GEMINI_API_KEY="sua_chave" confere-ai
 
 ---
 
-## 📂 Documentação e Recursos Técnicos
+## 📂 Central de Documentos da Entrega (FIAP Tech4Change)
 
-* **[Guia de Testes do MVP para a Banca](docs/specs/guia_testes_mvp_banca.md)**: Cenários reais de teste (phishing bancário, boato de benefício social, mensagem legítima e texto inconclusivo) prontos para a banca copiar e colar.
-* **[Software Design Document (SDD)](docs/specs/sdd_mvp_confere_ai.md)**: Visão arquitetural, contratos de API (`POST /api/analyze`), regras de sanitização de PII e User Stories.
-* **[Diretrizes de Engenharia e Clean Architecture](docs/specs/architecture_and_guidelines.md)**: Padrões de arquitetura, princípios SOLID e TDD.
-* **[Guia de Deploy no Google Cloud Run](docs/deployment/google_cloud_run.md)**: Instruções de conteinerização Docker e execução serverless.
-* **[Pesquisa de Mercado e Validação](docs/research/Confere_Ai_Proposta.pdf)**: Dados da pesquisa com 39 respondentes e benchmark de modelos de receita.
-* **Pacote Oficial de Submissão Tech4Change**: Os arquivos de Pitch Deck, Roteiro de Vídeo e Documento Central da Entrega estão organizados na branch dedicada [`feature/tech4change-submission`](https://github.com/Emerson21/confere-ai/tree/feature/tech4change-submission).
-
+* **[Documento Central de Entrega para PDF](docs/entrega/Tech4Change_Documento_Central.md)**
+* **[Pitch Deck Completo (11 Slides)](docs/pitch/pitch_deck_tech4change.md)**
+* **[Roteiro do Vídeo de Pitch (5 Minutos)](docs/pitch/video_pitch_script_5min.md)**
+* **[Guia de Testes do MVP para a Banca](docs/specs/guia_testes_mvp_banca.md)**
+* **[Relatório de Validação e Aprendizados (39 Respondentes)](docs/research/relatorio_validacao_aprendizados.md)**
+* **[Matriz de Alinhamento com a Banca](docs/specs/matriz_criterios_banca.md)**
+* **[Guia de Deploy no Google Cloud Run](docs/deployment/google_cloud_run.md)**
