@@ -9,13 +9,25 @@ Este guia foi elaborado para orientar os professores avaliadores no teste práti
 
 * **Aplicação em Nuvem (Google Cloud Run):** `https://confere-ai-65825316137.southamerica-east1.run.app` *(ou URL atualizada no painel Cloud Run do projeto)*
 * **Execução Local (Caso deseje rodar via terminal):**
-  ```bash
-  git clone https://github.com/Emerson21/confere-ai.git
-  cd confere-ai
-  npm install
-  npm run dev
-  # Acesse: http://localhost:3000
-  ```
+  1. Clonar e instalar dependências:
+     ```bash
+     git clone https://github.com/Emerson21/confere-ai.git
+     cd confere-ai
+     npm install
+     ```
+  2. Criar o arquivo `.env.local` a partir do modelo e informar a chave de API do Gemini (obtida gratuitamente no [Google AI Studio](https://aistudio.google.com/)):
+     ```bash
+     cp .env.example .env.local
+     ```
+     Abra o `.env.local` e defina sua chave:
+     ```env
+     GEMINI_API_KEY=sua_chave_do_gemini_aqui
+     ```
+  3. Iniciar o servidor de desenvolvimento:
+     ```bash
+     npm run dev
+     # Acesse: http://localhost:3000
+     ```
 * **Credenciais de Acesso:** A aplicação é pública e **não exige login prévio nem senhas**, assegurando zero atrito para a banca e para os usuários finais.
 
 ---
