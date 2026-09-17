@@ -1,6 +1,7 @@
 import { IPiiSanitizer } from '@/application/ports/IPiiSanitizer';
 import { IFactCheckGateway } from '@/application/ports/IFactCheckGateway';
 import { ILlmGateway } from '@/application/ports/ILlmGateway';
+import { IUrlMetadataGateway } from '@/application/ports/IUrlMetadataGateway';
 import { AnalysisResponse, FactCheckSource } from '@/domain/types/analysis';
 import { RiskAssessment } from '@/domain/entities/RiskAssessment';
 
@@ -13,7 +14,8 @@ export class VerifyContentUseCase {
   constructor(
     private readonly piiSanitizer: IPiiSanitizer,
     private readonly factCheckGateway: IFactCheckGateway,
-    private readonly llmGateway: ILlmGateway
+    private readonly llmGateway: ILlmGateway,
+    private readonly urlMetadataGateway?: IUrlMetadataGateway
   ) {}
 
   public async execute(input: VerifyContentInput): Promise<AnalysisResponse> {
@@ -21,8 +23,28 @@ export class VerifyContentUseCase {
       throw new Error('Conteúdo para análise não pode estar vazio.');
     }
 
-    // 1. Sanitizar dados pessoais obrigatoriamente antes de qualquer consulta externa
-    const sanitizationResult = this.piiSanitizer.sanitize(input.content);
+    // 1. Enriquecimento de metadados se for URL (vídeos, notícias, posts)
+    let rawTextToVerify = input.content;
+    if (input.contentType === 'url' && this.urlMetadataGateway) {
+      try {
+        const metadata = await this.urlMetadataGateway.fetchMetadata(input.content.trim());
+        if (metadata.title || metadata.description) {
+          const parts = [
+            `[Link verificado: ${input.content.trim()}]`,
+            metadata.title ? `Título / Legenda do Conteúdo: ${metadata.title}` : null,
+            metadata.description ? `Descrição / Metadados: ${metadata.description}` : null,
+          ].filter(Boolean);
+          rawTextToVerify = parts.join('\n');
+        }
+      } catch {
+        // Degradação graciosa: segue com a URL original se o fetch falhar
+        rawTextToVerify = input.content;
+      }
+    }
+
+    // 2. Sanitizar dados pessoais obrigatoriamente antes de qualquer consulta externa
+    const sanitizationResult = this.piiSanitizer.sanitize(rawTextToVerify);
+
 
     try {
       // 2. Buscar evidências em bases públicas e agências de checagem

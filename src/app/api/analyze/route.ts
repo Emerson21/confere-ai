@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { RegexPiiSanitizer } from '@/infrastructure/sanitizer/RegexPiiSanitizer';
 import { GoogleFactCheckGateway } from '@/infrastructure/fact-check/GoogleFactCheckGateway';
 import { GeminiLlmGateway } from '@/infrastructure/llm/GeminiLlmGateway';
+import { OpenGraphUrlGateway } from '@/infrastructure/url-metadata/OpenGraphUrlGateway';
 import { InMemoryRateLimiter } from '@/infrastructure/security/InMemoryRateLimiter';
 import { VerifyContentUseCase } from '@/application/use-cases/VerifyContentUseCase';
 
@@ -29,10 +30,12 @@ const rateLimiter = new InMemoryRateLimiter({
 const piiSanitizer = new RegexPiiSanitizer();
 const factCheckGateway = new GoogleFactCheckGateway();
 const llmGateway = new GeminiLlmGateway();
+const urlMetadataGateway = new OpenGraphUrlGateway();
 const verifyContentUseCase = new VerifyContentUseCase(
   piiSanitizer,
   factCheckGateway,
-  llmGateway
+  llmGateway,
+  urlMetadataGateway
 );
 
 export async function POST(req: NextRequest): Promise<NextResponse> {

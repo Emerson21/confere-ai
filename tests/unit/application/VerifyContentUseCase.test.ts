@@ -94,6 +94,50 @@ describe('US-03 & US-05: VerifyContentUseCase (Orquestração de RAG e Fact-Chec
     expect(result.actionable_advice.length).toBeGreaterThan(0);
   });
 
+  it('deve enriquecer links com metadados/título via IUrlMetadataGateway quando contentType for url', async () => {
+    const mockUrlGateway = {
+      fetchMetadata: vi.fn().mockResolvedValue({
+        originalUrl: 'https://instagram.com/reel/123',
+        title: 'Vídeo sobre golpe do falso Pix',
+        description: 'Alerta sobre criminosos ligando fingindo ser gerentes',
+      }),
+    };
+
+    const useCaseWithUrlEnrichment = new VerifyContentUseCase(
+      mockPiiSanitizer,
+      mockFactCheckGateway,
+      mockLlmGateway,
+      mockUrlGateway
+    );
+
+    vi.mocked(mockPiiSanitizer.sanitize).mockImplementation((text) => ({
+      sanitizedText: text,
+      redactedCount: 0,
+      detectedTypes: [],
+    }));
+
+    vi.mocked(mockFactCheckGateway.search).mockResolvedValue([]);
+    vi.mocked(mockLlmGateway.analyzeContent).mockResolvedValue({
+      risk_level: 'SUSPEITO',
+      badge_label: 'Suspeita de Golpe',
+      short_summary: 'Vídeo alerta sobre golpe.',
+      indicators: [],
+      sources: [],
+      detailed_explanation: 'Explicação.',
+      actionable_advice: [],
+    });
+
+    await useCaseWithUrlEnrichment.execute({
+      content: 'https://instagram.com/reel/123',
+      contentType: 'url',
+    });
+
+    expect(mockUrlGateway.fetchMetadata).toHaveBeenCalledWith('https://instagram.com/reel/123');
+    expect(mockPiiSanitizer.sanitize).toHaveBeenCalledWith(
+      expect.stringContaining('Título / Legenda do Conteúdo: Vídeo sobre golpe do falso Pix')
+    );
+  });
+
   it('deve rejeitar entrada vazia com erro de validação de domínio', async () => {
     await expect(
       useCase.execute({
@@ -103,3 +147,4 @@ describe('US-03 & US-05: VerifyContentUseCase (Orquestração de RAG e Fact-Chec
     ).rejects.toThrowError(/Conteúdo para análise não pode estar vazio/);
   });
 });
+
