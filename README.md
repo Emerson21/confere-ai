@@ -132,11 +132,9 @@ docker run -p 3000:3000 -e GEMINI_API_KEY="sua_chave" confere-ai
 
 | Integrante | RM | Papel / Responsabilidades | Principais Contribuições |
 | :--- | :--- | :--- | :--- |
-| **[Nome do Integrante 1]** | RM [XXXXX] | Product & AI Engineering | Engenharia de prompts, integração com Gemini API, definição de invariantes éticas de IA e RAG. |
-| **[Nome do Integrante 2]** | RM [XXXXX] | Backend & Clean Architecture | Arquitetura em camadas (Domain/Application/Infrastructure), TDD (27 testes) e sanitizador de PII. |
-| **[Nome do Integrante 3]** | RM [XXXXX] | Frontend & UX Acessibilidade | Telas responsivas em Next.js/Tailwind, Web Speech API nativa para áudio, acessibilidade WCAG AA. |
-| **[Nome do Integrante 4]** | RM [XXXXX] | DevOps & Cloud Infrastructure | Conteinerização Docker, deploy serverless no Google Cloud Run, monitoramento e rate limiter. |
-| **[Nome do Integrante 5]** | RM [XXXXX] | Pesquisa de Usuário & Negócio | Pesquisa de validação com 39 respondentes, síntese de aprendizados e modelagem Pay-per-Query. |
+| **Mônica Mazzochi Hillman** | RM 375183 | Head de Produto | Concepção e aplicação da pesquisa de validação (39 respondentes), síntese de aprendizados e modelagem Pay-per-Query. |
+| **Emerson da Silva Alonso Haraguchi** | RM 376499 | Head of AI Engineering | Engenharia de prompts, integração com Gemini API, definição de invariantes éticas de IA e RAG. |
+| **Daniel Britto da Graça** | RM 370691 | Frontend & DevOps Engineer | Telas responsivas em Next.js/Tailwind, Web Speech API nativa para áudio, conteinerização Docker e deploy no Cloud Run. |
 
 ---
 

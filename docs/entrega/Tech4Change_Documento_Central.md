@@ -1,6 +1,6 @@
 # FIAP Tech4Change 2026 — Documento Oficial de Entrega
 ## Nome do Projeto: Confere Aí
-### Nome do Grupo: [Inserir Nome do Grupo]
+### Nome do Grupo: Grupo 23
 **Tema Oficial:** "Potencializando o Ser Humano com Inteligência Artificial"
 
 ---
@@ -19,11 +19,9 @@
 
 | Nome Completo | RM | Papel / Especialidade | Principais Contribuições no Projeto |
 | :--- | :--- | :--- | :--- |
+| **Mônica Mazzochi Hillman** | RM 375183 | Head de Produto | Concepção e aplicação da pesquisa de campo (39 respondentes), validação de requisitos de produto e modelagem Pay-per-Query. |
 | **Emerson da Silva Alonso Haraguchi** | RM 376499 | Head of AI Engineering | Concepção da solução, engenharia de prompts, integração com Google Gemini e Fact Check APIs. |
-| **[Nome do Integrante 2]** | RM [XXXXX] | Fullstack Developer / Clean Architecture | Implementação de Clean Architecture, TDD (27 testes), endpoints e sanitizador Regex de PII. |
-| **[Nome do Integrante 3]** | RM [XXXXX] | Frontend / UX & Acessibilidade | Desenvolvimento de componentes mobile-first (Next.js/Tailwind), microfone com Web Speech API e UI Design. |
-| **[Nome do Integrante 4]** | RM [XXXXX] | Cloud & DevOps Engineer | Conteinerização Docker, configuração no Google Cloud Run, monitoramento e rate limiting. |
-| **[Nome do Integrante 5]** | RM [XXXXX] | Pesquisa de Usuário & Negócio | Pesquisa de campo com 39 respondentes, análise de métricas, benchmark e modelo Pay-per-Query. |
+| **Daniel Britto da Graça** | RM 370691 | Frontend / DevOps & Cloud Engineer | Interface mobile-first (Next.js/Tailwind), áudio Web Speech API, conteinerização Docker e deploy no Google Cloud Run. |
 
 ---
 

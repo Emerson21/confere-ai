@@ -10,7 +10,7 @@ Este documento apresenta a estrutura completa dos **11 slides oficiais do Pitch 
 * **Subtítulo:** O copiloto inteligente contra fraudes e desinformação digital.
 * **Tagline:** *"Antes de acreditar, clicar ou pagar: confira."*
 * **Tema FIAP:** Potencializando o Ser Humano com Inteligência Artificial
-* **Equipe:** [Nome do Grupo / Integrantes e RMs]
+* **Equipe:** Grupo 23 / Mônica Mazzochi Hillman (RM 375183), Emerson da Silva Alonso Haraguchi (RM 376499), Daniel Britto da Graça (RM 370691)
 * **Notas do Apresentador:**
   > *"Boa noite, banca avaliadora. Todos os dias, milhões de brasileiros recebem mensagens no WhatsApp e SMS com ameaças de bloqueio de conta, promessas milagrosas de benefícios sociais ou pedidos urgentes de Pix. Hoje apresentamos o Confere Aí: uma inteligência artificial criada para agir como um copiloto cognitivo e proteger o cidadão comum no momento mais crítico da decisão digital."*
 
