@@ -9,8 +9,8 @@
 
 | Item Obrigatório da Entrega | Link de Acesso | Observações / Permissões |
 | :--- | :--- | :--- |
-| **Aplicação / MVP Funcional** | `https://confere-ai-65825316137.southamerica-east1.run.app` | Acesso público imediato no Google Cloud Run, sem login ou barreiras. |
-| **Vídeo do Pitch (Até 5 min)** | `https://youtu.be/[INSERIR_LINK_AQUI]` | Vídeo no YouTube (público/não listado) cobrindo os 6 tópicos do regulamento. |
+| **Aplicação / MVP Funcional** | `https://confere-ai-127856698280.southamerica-east1.run.app/` | Acesso público imediato no Google Cloud Run, sem login ou barreiras. |
+| **Vídeo do Pitch (Até 5 min)** | `https://youtu.be/9H4K4gaRHYE` | Vídeo no YouTube (público/não listado) cobrindo os 6 tópicos do regulamento. |
 | **Repositório do Código (GitHub)** | `https://github.com/Emerson21/confere-ai` | Repositório público com código-fonte, suíte de testes automatizados e histórico. |
 
 ---
