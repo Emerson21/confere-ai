@@ -13,6 +13,8 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
   const [isRecording, setIsRecording] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [attachedFileName, setAttachedFileName] = useState<string | null>(null);
+  const [attachedImageBase64, setAttachedImageBase64] = useState<string | null>(null);
+
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -142,7 +144,15 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
     if (isRecording) {
       stopRecordingResources();
     }
-    if (!inputText.trim() || isLoading) return;
+    if ((!inputText.trim() && !attachedImageBase64) || isLoading) return;
+
+    if (attachedImageBase64) {
+      const payload = inputText.trim()
+        ? `${attachedImageBase64}\n${inputText.trim()}`
+        : attachedImageBase64;
+      onSubmit(payload, 'image_base64');
+      return;
+    }
 
     const isUrl = /^https?:\/\/[^\s]+$/i.test(inputText.trim());
     onSubmit(inputText.trim(), isUrl ? 'url' : 'text');
@@ -156,11 +166,43 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
 
     const reader = new FileReader();
     reader.onload = () => {
-      setInputText((prev) =>
-        prev
-          ? `${prev}\n[Anexo selecionado: ${file.name}] Verifique os dados deste comprovante ou boleto.`
-          : `[Anexo selecionado: ${file.name}] Verifique se este boleto ou comprovante possui indícios de fraude ou dados divergentes.`
-      );
+      const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+      if (!dataUrl) return;
+
+      // Se for imagem, redimensiona se for muito grande para garantir envio rápido
+      if (file.type.startsWith('image/')) {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1600;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            setAttachedImageBase64(compressedDataUrl);
+          } else {
+            setAttachedImageBase64(dataUrl);
+          }
+        };
+        img.onerror = () => {
+          setAttachedImageBase64(dataUrl);
+        };
+        img.src = dataUrl;
+      } else {
+        setAttachedImageBase64(dataUrl);
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -221,7 +263,11 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             disabled={isLoading}
-            placeholder="Cole aqui a mensagem, link ou boleto suspeito (ou clique em 'Gravar Áudio' para falar)..."
+            placeholder={
+              attachedFileName
+                ? 'Imagem anexada! Clique em VERIFICAR MENSAGEM abaixo ou adicione um comentário opcional aqui...'
+                : "Cole aqui a mensagem, link ou boleto suspeito (ou clique em 'Gravar Áudio' para falar)..."
+            }
             rows={5}
             className="w-full p-4 text-base text-gray-900 placeholder:text-gray-500 focus:outline-none resize-none min-h-[140px] bg-transparent"
             aria-label="Campo de entrada para mensagem suspeita"
@@ -229,18 +275,30 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
 
           {/* Indicador de Arquivo Anexado */}
           {attachedFileName && (
-            <div className="px-4 py-2 bg-teal-50/70 border-t border-teal-100 flex items-center justify-between text-xs text-teal-800">
-              <span className="flex items-center gap-1.5 font-medium truncate">
-                <CheckCircle2 className="w-4 h-4 text-teal-600 flex-shrink-0" />
-                Anexo: {attachedFileName}
-              </span>
+            <div className="px-4 py-2.5 bg-teal-50/70 border-t border-teal-100 flex items-center justify-between text-xs text-teal-800 gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                {attachedImageBase64 && attachedImageBase64.startsWith('data:image/') ? (
+                  <img
+                    src={attachedImageBase64}
+                    alt="Miniatura do anexo"
+                    className="w-10 h-10 rounded-lg object-cover border border-teal-200 flex-shrink-0"
+                  />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                )}
+                <div className="truncate">
+                  <p className="font-bold text-teal-900 truncate">Anexo: {attachedFileName}</p>
+                  <p className="text-[11px] text-teal-700">Leitura visual pronta para análise</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => {
                   setAttachedFileName(null);
+                  setAttachedImageBase64(null);
                   if (fileInputRef.current) fileInputRef.current.value = '';
                 }}
-                className="text-teal-700 hover:text-teal-900 font-bold ml-2"
+                className="text-teal-700 hover:text-teal-900 font-bold ml-2 flex-shrink-0"
               >
                 Remover
               </button>
@@ -288,7 +346,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
               type="file"
               ref={fileInputRef}
               onChange={handleFileUpload}
-              accept="image/png,image/jpeg,image/jpg,application/pdf"
+              accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
               className="hidden"
               aria-hidden="true"
             />
@@ -298,7 +356,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
         {/* Botão Primário de Ação */}
         <button
           type="submit"
-          disabled={!inputText.trim() || isLoading}
+          disabled={(!inputText.trim() && !attachedImageBase64) || isLoading}
           className="w-full bg-teal-600 hover:bg-teal-700 active:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-base uppercase rounded-xl h-14 flex items-center justify-center transition shadow-md min-h-[48px] focus:outline-none focus:ring-2 focus:ring-teal-500"
         >
           {isLoading ? (

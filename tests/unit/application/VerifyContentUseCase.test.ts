@@ -138,6 +138,53 @@ describe('US-03 & US-05: VerifyContentUseCase (Orquestração de RAG e Fact-Chec
     );
   });
 
+  it('deve extrair texto via visão multimodal quando contentType for image_base64 e sanitizar PII antes da análise', async () => {
+    const mockMultimodalLlmGateway: ILlmGateway = {
+      extractTextFromImage: vi
+        .fn()
+        .mockResolvedValue(
+          '[Conteúdo extraído da imagem]:\nOlá DAIANE! Aqui é o farmacêutico Renato da farmácia SAO ROQUE 1. CPF 123.456.789-00'
+        ),
+      analyzeContent: vi.fn().mockResolvedValue({
+        risk_level: 'BAIXO_RISCO',
+        badge_label: 'Sinais de Confiabilidade',
+        short_summary: 'Mensagem informativa de acompanhamento farmacêutico sem pedido financeiro.',
+        indicators: [],
+        sources: [],
+        detailed_explanation: 'Não há cobrança ou links maliciosos na imagem.',
+        actionable_advice: ['Confirme se realizou compra recente na farmácia citada.'],
+      }),
+    };
+
+    const multimodalUseCase = new VerifyContentUseCase(
+      mockPiiSanitizer,
+      mockFactCheckGateway,
+      mockMultimodalLlmGateway
+    );
+
+    vi.mocked(mockPiiSanitizer.sanitize).mockReturnValue({
+      sanitizedText:
+        '[Conteúdo extraído da imagem]:\nOlá DAIANE! Aqui é o farmacêutico Renato da farmácia SAO ROQUE 1. CPF [CPF_OCULTO]',
+      redactedCount: 1,
+      detectedTypes: ['CPF'],
+    });
+    vi.mocked(mockFactCheckGateway.search).mockResolvedValue([]);
+
+    const result = await multimodalUseCase.execute({
+      content: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD==',
+      contentType: 'image_base64',
+    });
+
+    expect(mockMultimodalLlmGateway.extractTextFromImage).toHaveBeenCalledWith(
+      'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD=='
+    );
+    expect(mockPiiSanitizer.sanitize).toHaveBeenCalledWith(
+      expect.stringContaining('farmácia SAO ROQUE 1')
+    );
+    expect(result.risk_level).toBe('BAIXO_RISCO');
+    expect(result.pii_redacted_count).toBe(1);
+  });
+
   it('deve rejeitar entrada vazia com erro de validação de domínio', async () => {
     await expect(
       useCase.execute({
@@ -147,4 +194,5 @@ describe('US-03 & US-05: VerifyContentUseCase (Orquestração de RAG e Fact-Chec
     ).rejects.toThrowError(/Conteúdo para análise não pode estar vazio/);
   });
 });
+
 

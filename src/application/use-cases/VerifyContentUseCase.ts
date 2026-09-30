@@ -23,7 +23,7 @@ export class VerifyContentUseCase {
       throw new Error('Conteúdo para análise não pode estar vazio.');
     }
 
-    // 1. Enriquecimento de metadados se for URL (vídeos, notícias, posts)
+    // 1. Enriquecimento de metadados se for URL ou extração multimodal (OCR) se for imagem
     let rawTextToVerify = input.content;
     if (input.contentType === 'url' && this.urlMetadataGateway) {
       try {
@@ -40,10 +40,20 @@ export class VerifyContentUseCase {
         // Degradação graciosa: segue com a URL original se o fetch falhar
         rawTextToVerify = input.content;
       }
+    } else if (input.contentType === 'image_base64' && this.llmGateway.extractTextFromImage) {
+      try {
+        const extractedText = await this.llmGateway.extractTextFromImage(input.content.trim());
+        if (extractedText && extractedText.trim() !== '') {
+          rawTextToVerify = extractedText;
+        }
+      } catch {
+        rawTextToVerify = '[Imagem anexada para verificação]';
+      }
     }
 
     // 2. Sanitizar dados pessoais obrigatoriamente antes de qualquer consulta externa
     const sanitizationResult = this.piiSanitizer.sanitize(rawTextToVerify);
+
 
 
     try {

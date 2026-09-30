@@ -8,17 +8,33 @@ import { InMemoryRateLimiter } from '@/infrastructure/security/InMemoryRateLimit
 import { VerifyContentUseCase } from '@/application/use-cases/VerifyContentUseCase';
 
 // Validação com Zod para proteção de borda
-const AnalyzeRequestSchema = z.object({
-  content: z
-    .string({ required_error: 'O conteúdo para análise é obrigatório.' })
-    .trim()
-    .min(1, 'O conteúdo para análise não pode estar vazio.')
-    .max(5000, 'O texto não pode exceder 5.000 caracteres.'),
-  contentType: z.enum(['text', 'url', 'image_base64'], {
-    errorMap: () => ({ message: 'Tipo de conteúdo inválido. Deve ser text, url ou image_base64.' }),
-  }),
-  userConsentAnonymization: z.boolean().optional(),
-});
+const AnalyzeRequestSchema = z
+  .object({
+    content: z
+      .string({ required_error: 'O conteúdo para análise é obrigatório.' })
+      .trim()
+      .min(1, 'O conteúdo para análise não pode estar vazio.'),
+    contentType: z.enum(['text', 'url', 'image_base64'], {
+      errorMap: () => ({ message: 'Tipo de conteúdo inválido. Deve ser text, url ou image_base64.' }),
+    }),
+    userConsentAnonymization: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const maxLen = data.contentType === 'image_base64' ? 10_000_000 : 5000;
+    if (data.content.length > maxLen) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.too_big,
+        maximum: maxLen,
+        type: 'string',
+        inclusive: true,
+        message:
+          data.contentType === 'image_base64'
+            ? 'A imagem anexada excede o limite máximo permitido.'
+            : 'O texto não pode exceder 5.000 caracteres.',
+      });
+    }
+  });
+
 
 // Instância singleton de rate limiter para proteção contra abuso (15 req/min por IP)
 const rateLimiter = new InMemoryRateLimiter({
