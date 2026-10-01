@@ -1,7 +1,17 @@
-'use client';
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, MicOff, Square, Camera, Lock, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import {
+  Mic,
+  MicOff,
+  Square,
+  Camera,
+  Lock,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Upload,
+  Clock,
+  FileAudio,
+} from 'lucide-react';
 
 interface InputContainerProps {
   onSubmit: (content: string, contentType: 'text' | 'url' | 'image_base64') => void;
@@ -11,12 +21,14 @@ interface InputContainerProps {
 export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoading = false }) => {
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [attachedFileName, setAttachedFileName] = useState<string | null>(null);
   const [attachedImageBase64, setAttachedImageBase64] = useState<string | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const nativeAudioInputRef = useRef<HTMLInputElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -24,10 +36,40 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
   const recognitionRef = useRef<any>(null);
   const isRecordingRef = useRef<boolean>(false);
   const isUnmountedRef = useRef<boolean>(false);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
 
   // Manter ref sincronizada para callbacks de eventos
   useEffect(() => {
     isRecordingRef.current = isRecording;
+  }, [isRecording]);
+
+  // Timer de gravação com limite de 60 segundos
+  useEffect(() => {
+    if (isRecording) {
+      setRecordingSeconds(0);
+      timerIntervalRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => {
+          if (prev >= 59) {
+            stopRecordingResources(false);
+            return 60;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    } else {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
   }, [isRecording]);
 
   // Limpeza de recursos ao desmontar componente
@@ -39,8 +81,24 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
     };
   }, []);
 
+  const formatSeconds = (sec: number) => {
+    const m = Math.floor(sec / 60).toString().padStart(2, '0');
+    const s = (sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  const cancelRecording = () => {
+    speechRecognizedRef.current = true; // evita disparar /api/transcribe
+    audioChunksRef.current = [];
+    stopRecordingResources(false);
+    setAudioError(null);
+  };
 
   const stopRecordingResources = (isUnmounting = false) => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       try {
         if (isUnmounting) {
@@ -68,6 +126,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
     }
     setIsRecording(false);
   };
+
 
 
   const handleToggleAudio = async () => {
@@ -293,6 +352,60 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
 
     setAttachedFileName(file.name);
 
+    // 1. Suporte a arquivos de áudio (WhatsApp, gravações do sistema: .ogg, .opus, .mp3, .m4a, etc.)
+    const isAudioFile =
+      file.type.startsWith('audio/') ||
+      /\.(ogg|opus|mp3|m4a|wav|aac|webm|amr)$/i.test(file.name);
+
+    if (isAudioFile) {
+      setIsTranscribing(true);
+      setAudioError(null);
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+        if (!dataUrl) {
+          setIsTranscribing(false);
+          return;
+        }
+
+        try {
+          const res = await fetch('/api/transcribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              audioBase64: dataUrl,
+              mimeType: file.type || 'audio/ogg',
+            }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.transcription && data.transcription.trim()) {
+              setInputText((prev) =>
+                prev.trim()
+                  ? `${prev.trim()}\n[Áudio anexado - ${file.name}]: ${data.transcription.trim()}`
+                  : `[Áudio anexado - ${file.name}]: ${data.transcription.trim()}`
+              );
+            } else {
+              setAudioError(
+                `Não identificamos palavras audíveis no arquivo de áudio "${file.name}".`
+              );
+            }
+          } else {
+            setAudioError(`Falha ao transcrever o arquivo de áudio "${file.name}".`);
+          }
+        } catch (err) {
+          console.error('Erro ao transcrever arquivo de áudio:', err);
+          setAudioError('Erro de conexão ao processar o arquivo de áudio.');
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    // 2. Se for imagem ou documento
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = typeof reader.result === 'string' ? reader.result : '';
@@ -346,20 +459,41 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
       </div>
 
       <form onSubmit={handleFormSubmit} className="space-y-4">
-        {/* Banner de Erro de Áudio / Microfone se houver */}
+        {/* Banner de Erro de Áudio / Microfone com Ações Alternativas */}
         {audioError && (
-          <div className="rounded-xl bg-amber-50 border border-amber-300 p-3 text-sm text-amber-900 flex items-start gap-2 animate-fadeIn">
-            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-semibold">{audioError}</p>
+          <div className="rounded-xl bg-amber-50 border border-amber-300 p-3.5 text-sm text-amber-900 space-y-2.5 animate-fadeIn">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold leading-snug">{audioError}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAudioError(null)}
+                className="text-amber-700 hover:text-amber-900 text-xs font-bold px-1"
+                aria-label="Fechar aviso"
+              >
+                ✕
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setAudioError(null)}
-              className="text-amber-700 hover:text-amber-900 text-xs font-bold px-1"
-            >
-              ✕
-            </button>
+            <div className="flex flex-wrap gap-2 pt-1 border-t border-amber-200">
+              <button
+                type="button"
+                onClick={() => nativeAudioInputRef.current?.click()}
+                className="text-xs font-bold text-teal-800 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5 shadow-sm"
+              >
+                <Mic className="w-3.5 h-3.5 text-teal-700" />
+                Gravar com aplicativo nativo do celular
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs font-bold text-teal-800 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5 shadow-sm"
+              >
+                <FileAudio className="w-3.5 h-3.5 text-teal-700" />
+                Anexar áudio (WhatsApp / Gravador)
+              </button>
+            </div>
           </div>
         )}
 
@@ -373,20 +507,29 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
               : 'border-teal-600 bg-white focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-teal-700'
           }`}
         >
-          {/* Indicador Ativo de Gravação de Áudio */}
+          {/* Indicador Ativo de Gravação de Áudio com Cronômetro */}
           {isRecording && (
-            <div className="bg-red-500 text-white text-xs font-bold px-4 py-2 flex items-center justify-between animate-pulse">
+            <div className="bg-red-500 text-white text-xs font-bold px-4 py-2.5 flex items-center justify-between animate-pulse">
               <span className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping inline-block" />
-                Microfone Ativo — Fale a mensagem suspeita...
+                Gravando ({formatSeconds(recordingSeconds)} / 01:00)...
               </span>
-              <button
-                type="button"
-                onClick={() => stopRecordingResources(false)}
-                className="bg-white text-red-600 px-2 py-0.5 rounded-md text-xs font-extrabold hover:bg-red-50"
-              >
-                Concluir
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => stopRecordingResources(false)}
+                  className="bg-white text-red-600 px-2.5 py-1 rounded-md text-xs font-extrabold hover:bg-red-50 shadow-sm"
+                >
+                  Concluir
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelRecording}
+                  className="bg-red-700 text-white px-2 py-1 rounded-md text-xs font-bold hover:bg-red-800"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           )}
 
@@ -406,7 +549,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
             disabled={isLoading || isTranscribing}
             placeholder={
               attachedFileName
-                ? 'Imagem anexada! Clique em VERIFICAR MENSAGEM abaixo ou adicione um comentário opcional aqui...'
+                ? 'Arquivo anexado! Clique em VERIFICAR MENSAGEM abaixo ou adicione um comentário opcional aqui...'
                 : isTranscribing
                 ? 'Transcrevendo sua fala com inteligência artificial...'
                 : "Cole aqui a mensagem, link ou boleto suspeito (ou clique em 'Gravar Áudio' para falar)..."
@@ -431,7 +574,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
                 )}
                 <div className="truncate">
                   <p className="font-bold text-teal-900 truncate">Anexo: {attachedFileName}</p>
-                  <p className="text-[11px] text-teal-700">Leitura visual pronta para análise</p>
+                  <p className="text-[11px] text-teal-700">Leitura pronta para análise</p>
                 </div>
               </div>
               <button
@@ -440,6 +583,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
                   setAttachedFileName(null);
                   setAttachedImageBase64(null);
                   if (fileInputRef.current) fileInputRef.current.value = '';
+                  if (nativeAudioInputRef.current) nativeAudioInputRef.current.value = '';
                 }}
                 className="text-teal-700 hover:text-teal-900 font-bold ml-2 flex-shrink-0"
               >
@@ -485,24 +629,36 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading}
+              disabled={isLoading || isTranscribing}
               className="flex items-center justify-center gap-2 py-3 px-2 text-sm font-semibold text-teal-700 hover:bg-teal-50 transition min-h-[48px] focus:outline-none"
-              aria-label="Tirar foto ou anexar imagem/boleto"
+              aria-label="Tirar foto, anexar imagem ou arquivo de áudio"
             >
               <Camera className="w-5 h-5" />
-              <span>Tirar Foto/Upload</span>
+              <span>Foto / Áudio / Doc</span>
             </button>
 
             <input
               type="file"
               ref={fileInputRef}
               onChange={handleFileUpload}
-              accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
+              accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf,audio/*,.ogg,.opus,.mp3,.m4a,.wav,.aac"
               className="hidden"
               aria-hidden="true"
             />
+
+            <input
+              type="file"
+              ref={nativeAudioInputRef}
+              onChange={handleFileUpload}
+              accept="audio/*"
+              capture="user"
+              className="hidden"
+              aria-hidden="true"
+            />
+
           </div>
         </div>
+
 
         {/* Botão Primário de Ação */}
         <button
