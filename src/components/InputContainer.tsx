@@ -1,15 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Mic,
-  MicOff,
   Square,
   Camera,
   Lock,
   Loader2,
   AlertCircle,
   CheckCircle2,
-  Upload,
-  Clock,
   FileAudio,
 } from 'lucide-react';
 
@@ -147,8 +144,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
 
     try {
       // 2. Solicitar acesso ao microfone
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
+      mediaStreamRef.current = await navigator.mediaDevices.getUserMedia({audio: true});
 
       // 3. Configurar formato de áudio suportado pelo navegador móvel
       let selectedMimeType = '';
@@ -453,7 +449,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
     <div className="w-full max-w-md mx-auto px-4 py-6 space-y-6 animate-fadeIn">
       {/* Título de Boas-Vindas */}
       <div className="text-left space-y-1">
-        <h2 className="text-3xl font-extrabold text-[#78350F] tracking-tight leading-tight">
+        <h2 className="text-3xl font-extrabold text-brand-dark tracking-tight leading-tight">
           O que você deseja verificar hoje?
         </h2>
       </div>
@@ -504,7 +500,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
               ? 'border-red-500 ring-2 ring-red-400/50 bg-red-50/20'
               : isTranscribing
               ? 'border-teal-500 ring-2 ring-teal-400/40 bg-teal-50/10'
-              : 'border-teal-600 bg-white focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-teal-700'
+              : 'border-brand-dark bg-white focus-within:ring-2 focus-within:ring-brand-teal focus-within:border-brand-dark'
           }`}
         >
           {/* Indicador Ativo de Gravação de Áudio com Cronômetro */}
@@ -561,20 +557,20 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
 
           {/* Indicador de Arquivo Anexado */}
           {attachedFileName && (
-            <div className="px-4 py-2.5 bg-teal-50/70 border-t border-teal-100 flex items-center justify-between text-xs text-teal-800 gap-2">
+            <div className="px-4 py-2.5 bg-brand-mint border-t border-brand-mintBorder flex items-center justify-between text-xs text-brand-dark gap-2">
               <div className="flex items-center gap-2.5 min-w-0">
                 {attachedImageBase64 && attachedImageBase64.startsWith('data:image/') ? (
                   <img
                     src={attachedImageBase64}
                     alt="Miniatura do anexo"
-                    className="w-10 h-10 rounded-lg object-cover border border-teal-200 flex-shrink-0"
+                    className="w-10 h-10 rounded-lg object-cover border border-brand-mintBorder flex-shrink-0"
                   />
                 ) : (
-                  <CheckCircle2 className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-brand-teal flex-shrink-0" />
                 )}
                 <div className="truncate">
-                  <p className="font-bold text-teal-900 truncate">Anexo: {attachedFileName}</p>
-                  <p className="text-[11px] text-teal-700">Leitura pronta para análise</p>
+                  <p className="font-bold text-brand-dark truncate">Anexo: {attachedFileName}</p>
+                  <p className="text-[11px] text-brand-dark/70">Leitura pronta para análise</p>
                 </div>
               </div>
               <button
@@ -585,7 +581,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
                   if (fileInputRef.current) fileInputRef.current.value = '';
                   if (nativeAudioInputRef.current) nativeAudioInputRef.current.value = '';
                 }}
-                className="text-teal-700 hover:text-teal-900 font-bold ml-2 flex-shrink-0"
+                className="text-brand-dark hover:text-brand-teal font-bold ml-2 flex-shrink-0"
               >
                 Remover
               </button>
@@ -664,7 +660,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
         <button
           type="submit"
           disabled={(!inputText.trim() && !attachedImageBase64) || isLoading || isTranscribing}
-          className="w-full bg-teal-600 hover:bg-teal-700 active:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-base uppercase rounded-xl h-14 flex items-center justify-center transition shadow-md min-h-[48px] focus:outline-none focus:ring-2 focus:ring-teal-500"
+          className="w-full bg-brand-teal text-brand-dark hover:bg-brand-dark hover:text-white active:bg-brand-darkActive active:text-white disabled:opacity-50 disabled:cursor-not-allowed font-bold text-base uppercase rounded-xl h-14 flex items-center justify-center transition shadow-md min-h-[48px] focus:outline-none focus:ring-2 focus:ring-brand-dark focus:ring-offset-2"
         >
 
           {isLoading ? (
@@ -679,13 +675,13 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
       </form>
 
       {/* Selo de Garantia de Privacidade */}
-      <div className="w-full rounded-2xl bg-teal-50 border border-teal-200 p-4 flex items-center gap-3 shadow-sm">
-        <div className="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-700">
+      <div className="w-full rounded-2xl bg-brand-mint border border-brand-mintBorder p-4 flex items-center gap-3 shadow-sm">
+        <div className="w-10 h-10 rounded-xl bg-brand-teal flex items-center justify-center flex-shrink-0 text-white">
           <Lock className="w-5 h-5" />
         </div>
-        <div className="text-xs sm:text-sm text-teal-900 font-medium leading-snug">
+        <div className="text-xs sm:text-sm text-brand-dark font-medium leading-snug">
           <p className="font-bold">Sua privacidade é garantida.</p>
-          <p className="text-teal-800/90">Nenhum dado pessoal é salvo.</p>
+          <p className="text-brand-dark/70">Nenhum dado pessoal é salvo.</p>
         </div>
       </div>
     </div>

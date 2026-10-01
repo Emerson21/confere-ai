@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronDown, ExternalLink, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ChevronDown, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { Indicator, FactCheckSource } from '@/domain/types/analysis';
 
 interface AccordionDetailsProps {
@@ -20,7 +20,7 @@ export const AccordionDetails: React.FC<AccordionDetailsProps> = ({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="w-full rounded-2xl border border-teal-600/30 overflow-hidden bg-white shadow-sm transition-all">
+    <div className="w-full rounded-2xl border border-brand-dark/15 overflow-hidden bg-white shadow-sm transition-all">
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}

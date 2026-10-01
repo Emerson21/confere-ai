@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { ShieldCheck, ArrowLeft } from 'lucide-react';
+import Image from 'next/image';
+import { ArrowLeft } from 'lucide-react';
 
 interface HeaderProps {
   onBack?: () => void;
@@ -10,7 +11,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onBack, showBack = false }) => {
   return (
-    <header className="w-full bg-teal-600 text-white shadow-sm py-4 px-4 sticky top-0 z-30 transition-all">
+    <header className="w-full bg-brand-dark text-white shadow-sm py-4 px-4 sticky top-0 z-30 transition-all">
       <div className="max-w-md mx-auto flex items-center justify-between">
         <div className="flex items-center gap-3">
           {(showBack || onBack) && (
@@ -24,9 +25,14 @@ export const Header: React.FC<HeaderProps> = ({ onBack, showBack = false }) => {
           )}
 
           <div className="flex items-center gap-2" aria-label="Logo Confere Aí">
-            <div className="w-10 h-10 rounded-xl bg-teal-700/60 flex items-center justify-center border border-teal-400/40 shadow-inner">
-              <ShieldCheck className="w-7 h-7 text-white" />
-            </div>
+            <Image
+              src="/logo_ca.svg"
+              alt="Logo Confere Aí"
+              width={40}
+              height={40}
+              className="logo"
+              priority
+            />
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white leading-tight">
                 Confere Aí

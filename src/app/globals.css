@@ -23,3 +23,9 @@
 .animate-fadeIn {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+.logo {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: contain;
+}
