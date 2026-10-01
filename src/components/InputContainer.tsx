@@ -14,12 +14,16 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
   const [audioError, setAudioError] = useState<string | null>(null);
   const [attachedFileName, setAttachedFileName] = useState<string | null>(null);
   const [attachedImageBase64, setAttachedImageBase64] = useState<string | null>(null);
-
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const speechRecognizedRef = useRef<boolean>(false);
   const recognitionRef = useRef<any>(null);
   const isRecordingRef = useRef<boolean>(false);
+  const isUnmountedRef = useRef<boolean>(false);
 
   // Manter ref sincronizada para callbacks de eventos
   useEffect(() => {
@@ -28,12 +32,25 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
 
   // Limpeza de recursos ao desmontar componente
   useEffect(() => {
+    isUnmountedRef.current = false;
     return () => {
-      stopRecordingResources();
+      isUnmountedRef.current = true;
+      stopRecordingResources(true);
     };
   }, []);
 
-  const stopRecordingResources = () => {
+
+  const stopRecordingResources = (isUnmounting = false) => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        if (isUnmounting) {
+          mediaRecorderRef.current.onstop = null;
+        }
+        mediaRecorderRef.current.stop();
+      } catch (e) {
+        // Ignora se já estiver parado
+      }
+    }
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
       mediaStreamRef.current = null;
@@ -57,87 +74,194 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
 
     setAudioError(null);
 
-    // 1. Verificar suporte básico a mediaDevices
+    // 1. Verificar suporte a mediaDevices (requer HTTPS ou localhost no mobile)
     if (!navigator?.mediaDevices?.getUserMedia) {
-      setAudioError('Seu navegador não possui suporte para gravação de áudio.');
+      setAudioError(
+        'Seu navegador não liberou acesso ao microfone ou requer conexão segura HTTPS para ativar a gravação de áudio.'
+      );
       return;
     }
 
     try {
-      // 2. Solicitar permissão explícita de microfone ao navegador
+      // 2. Solicitar acesso ao microfone
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
 
-      // 3. Inicializar SpeechRecognition se disponível no navegador
+      // 3. Configurar formato de áudio suportado pelo navegador móvel
+      let selectedMimeType = '';
+      if (typeof MediaRecorder !== 'undefined') {
+        const candidateTypes = [
+          'audio/webm;codecs=opus',
+          'audio/webm',
+          'audio/mp4',
+          'audio/aac',
+          'audio/ogg;codecs=opus',
+        ];
+        for (const type of candidateTypes) {
+          if (MediaRecorder.isTypeSupported(type)) {
+            selectedMimeType = type;
+            break;
+          }
+        }
+      }
+
+      audioChunksRef.current = [];
+      speechRecognizedRef.current = false;
+
+      let mediaRecorder: MediaRecorder | null = null;
+      try {
+        mediaRecorder = selectedMimeType
+          ? new MediaRecorder(stream, { mimeType: selectedMimeType })
+          : new MediaRecorder(stream);
+      } catch {
+        mediaRecorder = new MediaRecorder(stream);
+      }
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        if (isUnmountedRef.current) return;
+
+        // Libera os tracks do microfone
+        if (mediaStreamRef.current) {
+          mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+          mediaStreamRef.current = null;
+        }
+
+        // Se o SpeechRecognition nativo já transcreveu texto, não precisamos chamar o servidor
+        if (speechRecognizedRef.current) {
+          return;
+        }
+
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: selectedMimeType || 'audio/webm',
+        });
+
+        // Se o áudio gravado for menor que 800 bytes, ignora clique acidental
+        if (audioBlob.size < 800) {
+          return;
+        }
+
+        setIsTranscribing(true);
+        try {
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            if (isUnmountedRef.current) return;
+            const base64Audio = typeof reader.result === 'string' ? reader.result : '';
+            if (!base64Audio) {
+              setIsTranscribing(false);
+              return;
+            }
+
+            try {
+              const res = await fetch('/api/transcribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  audioBase64: base64Audio,
+                  mimeType: selectedMimeType || 'audio/webm',
+                }),
+              });
+
+              if (res.ok) {
+                const data = await res.json();
+                if (data.transcription && data.transcription.trim()) {
+                  setInputText((prev) =>
+                    prev.trim()
+                      ? `${prev.trim()} ${data.transcription.trim()}`
+                      : data.transcription.trim()
+                  );
+                } else {
+                  setAudioError(
+                    'Não identificamos palavras audíveis no áudio. Fale mais próximo ao microfone e tente novamente.'
+                  );
+                }
+              } else {
+                setAudioError('Falha ao transcrever o áudio com a IA. Tente falar novamente.');
+              }
+            } catch (err) {
+              console.error('Erro na chamada /api/transcribe:', err);
+              setAudioError('Erro de conexão ao processar áudio.');
+            } finally {
+              if (!isUnmountedRef.current) {
+                setIsTranscribing(false);
+              }
+            }
+          };
+          reader.readAsDataURL(audioBlob);
+        } catch (err) {
+          console.error('Erro ao ler dados de áudio:', err);
+          setIsTranscribing(false);
+        }
+      };
+
+      mediaRecorder.start(250);
+
+      // 4. Em paralelo, tentar SpeechRecognition se disponível (otimizado para mobile)
       const SpeechRecognition =
         (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
       if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'pt-BR';
-        recognition.continuous = true;
-        recognition.interimResults = true;
+        try {
+          const recognition = new SpeechRecognition();
+          recognition.lang = 'pt-BR';
+          recognition.continuous = false; // continuous: false é crucial para estabilidade em mobile
+          recognition.interimResults = true;
 
-        let accumulatedText = inputText.trim() ? inputText.trim() + ' ' : '';
-
-        recognition.onresult = (event: any) => {
-          let interimText = '';
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              accumulatedText += transcript + ' ';
-              setInputText(accumulatedText.trim());
-            } else {
-              interimText += transcript;
+          recognition.onresult = (event: any) => {
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              const transcript = event.results[i][0].transcript;
+              if (event.results[i].isFinal) {
+                speechRecognizedRef.current = true;
+                setInputText((prev) =>
+                  prev.trim() ? `${prev.trim()} ${transcript.trim()}` : transcript.trim()
+                );
+              }
             }
-          }
-          if (interimText) {
-            setInputText((accumulatedText + interimText).trim());
-          }
-        };
+          };
 
-        recognition.onerror = (event: any) => {
-          console.error('Speech recognition error:', event.error);
-          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-            setAudioError('Acesso ao microfone negado. Por favor, permita o uso do microfone no navegador.');
-          } else if (event.error !== 'no-speech') {
-            setAudioError('Falha ao reconhecer o áudio. Tente falar novamente.');
-          }
-          stopRecordingResources();
-        };
+          recognition.onerror = (event: any) => {
+            console.warn('SpeechRecognition aviso no mobile:', event.error);
+          };
 
-        recognition.onend = () => {
-          if (isRecordingRef.current) {
-            // Se o reconhecimento parou espontaneamente mas o usuário não clicou em parar
-            stopRecordingResources();
-          }
-        };
+          recognition.onend = () => {
+            if (isRecordingRef.current) {
+              try {
+                recognition.start();
+              } catch {
+                // MediaRecorder continuará gravando
+              }
+            }
+          };
 
-        recognitionRef.current = recognition;
-        recognition.start();
-        setIsRecording(true);
-      } else {
-        // Fallback quando o navegador permite áudio mas não tem SpeechRecognition nativo
-        setIsRecording(true);
-        // Exibe indicação amigável de captura de áudio
-        setInputText((prev) =>
-          prev
-            ? `${prev}\n[Áudio capturado pelo microfone: aguardando transcrição]`
-            : 'Recebi uma mensagem de texto e áudio suspeita no WhatsApp pedindo transferência via Pix com urgência.'
-        );
+          recognitionRef.current = recognition;
+          recognition.start();
+        } catch (speechErr) {
+          console.warn('SpeechRecognition não pôde ser iniciado, usando gravação com Gemini:', speechErr);
+        }
       }
+
+      setIsRecording(true);
     } catch (err: any) {
       console.error('Erro ao acessar microfone:', err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setAudioError('Permissão para microfone negada. Clique no ícone de cadeado do navegador para autorizar o microfone.');
+        setAudioError(
+          'Permissão para microfone negada. No celular, toque no ícone de configurações/cadeado da barra do navegador e autorize o microfone.'
+        );
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setAudioError('Nenhum microfone foi detectado no seu dispositivo.');
+        setAudioError('Nenhum microfone foi detectado no seu aparelho.');
       } else {
-        setAudioError('Não foi possível ativar o microfone. Verifique as permissões.');
+        setAudioError('Não foi possível ativar o microfone. Verifique as permissões do navegador.');
       }
       stopRecordingResources();
     }
   };
+
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,6 +363,8 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
           className={`w-full rounded-2xl border-2 transition overflow-hidden shadow-sm ${
             isRecording
               ? 'border-red-500 ring-2 ring-red-400/50 bg-red-50/20'
+              : isTranscribing
+              ? 'border-teal-500 ring-2 ring-teal-400/40 bg-teal-50/10'
               : 'border-teal-600 bg-white focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-teal-700'
           }`}
         >
@@ -251,7 +377,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
               </span>
               <button
                 type="button"
-                onClick={stopRecordingResources}
+                onClick={() => stopRecordingResources(false)}
                 className="bg-white text-red-600 px-2 py-0.5 rounded-md text-xs font-extrabold hover:bg-red-50"
               >
                 Concluir
@@ -259,13 +385,25 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
             </div>
           )}
 
+          {/* Indicador de Transcrição de Áudio com IA */}
+          {isTranscribing && (
+            <div className="bg-teal-700 text-white text-xs font-bold px-4 py-2.5 flex items-center justify-between animate-fadeIn">
+              <span className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-white flex-shrink-0" />
+                Transcrevendo áudio com inteligência artificial...
+              </span>
+            </div>
+          )}
+
           <textarea
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            disabled={isLoading}
+            disabled={isLoading || isTranscribing}
             placeholder={
               attachedFileName
                 ? 'Imagem anexada! Clique em VERIFICAR MENSAGEM abaixo ou adicione um comentário opcional aqui...'
+                : isTranscribing
+                ? 'Transcrevendo sua fala com inteligência artificial...'
                 : "Cole aqui a mensagem, link ou boleto suspeito (ou clique em 'Gravar Áudio' para falar)..."
             }
             rows={5}
@@ -310,15 +448,22 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
             <button
               type="button"
               onClick={handleToggleAudio}
-              disabled={isLoading}
+              disabled={isLoading || isTranscribing}
               className={`flex items-center justify-center gap-2 py-3 px-2 text-sm font-semibold transition min-h-[48px] focus:outline-none ${
                 isRecording
                   ? 'text-red-600 bg-red-50 hover:bg-red-100 font-bold'
+                  : isTranscribing
+                  ? 'text-teal-700 opacity-60 cursor-wait'
                   : 'text-teal-700 hover:bg-teal-50'
               }`}
               aria-label={isRecording ? 'Parar gravação de áudio' : 'Gravar áudio com a dúvida'}
             >
-              {isRecording ? (
+              {isTranscribing ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin text-teal-600" />
+                  <span>Transcrevendo...</span>
+                </>
+              ) : isRecording ? (
                 <>
                   <Square className="w-5 h-5 fill-red-600 text-red-600" />
                   <span>Parar Gravação</span>
@@ -330,6 +475,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
                 </>
               )}
             </button>
+
 
             <button
               type="button"
@@ -356,9 +502,10 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
         {/* Botão Primário de Ação */}
         <button
           type="submit"
-          disabled={(!inputText.trim() && !attachedImageBase64) || isLoading}
+          disabled={(!inputText.trim() && !attachedImageBase64) || isLoading || isTranscribing}
           className="w-full bg-teal-600 hover:bg-teal-700 active:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-base uppercase rounded-xl h-14 flex items-center justify-center transition shadow-md min-h-[48px] focus:outline-none focus:ring-2 focus:ring-teal-500"
         >
+
           {isLoading ? (
             <span className="flex items-center gap-2">
               <Loader2 className="w-5 h-5 animate-spin" />

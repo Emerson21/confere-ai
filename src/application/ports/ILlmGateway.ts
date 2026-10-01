@@ -8,5 +8,7 @@ export interface LlmAnalysisInput {
 export interface ILlmGateway {
   analyzeContent(input: LlmAnalysisInput): Promise<Omit<AnalysisResponse, 'pii_redacted_count'>>;
   extractTextFromImage?(base64Content: string): Promise<string>;
+  transcribeAudio?(base64Audio: string, mimeType?: string): Promise<string>;
 }
+
 

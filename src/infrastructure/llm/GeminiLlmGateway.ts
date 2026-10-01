@@ -89,7 +89,53 @@ Não invente informações. Retorne apenas a descrição do contexto visual segu
     return userComment || '[Imagem anexada para verificação]';
   }
 
+  public async transcribeAudio(base64Audio: string, mimeType?: string): Promise<string> {
+    const dataUrlMatch = base64Audio.match(/^data:([^;]+);base64,(.+)$/);
+    const cleanMimeType = dataUrlMatch ? dataUrlMatch[1] : (mimeType || 'audio/webm');
+    const cleanData = dataUrlMatch ? dataUrlMatch[2] : base64Audio;
+
+    if (!this.genAI || !cleanData) {
+      return '';
+    }
+
+    const prompt = `Você é o módulo de reconhecimento de voz do assistente Confere Aí.
+Transcreva com total fidelidade em português brasileiro (pt-BR) tudo o que foi falado no áudio pelo usuário.
+Retorne EXCLUSIVAMENTE o texto transcrito, sem introduções, sem aspas e sem comentários adicionais.
+Se não houver fala clara ou apenas ruído de fundo, retorne vazio.`;
+
+    for (const modelName of this.getCandidateModels()) {
+      try {
+        const model = this.genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig: {
+            temperature: 0.1,
+          },
+        });
+
+        const response = await model.generateContent([
+          prompt,
+          {
+            inlineData: {
+              mimeType: cleanMimeType,
+              data: cleanData,
+            },
+          },
+        ]);
+
+        const text = response.response.text().trim();
+        if (text) {
+          return text;
+        }
+      } catch (err) {
+        console.warn(`Tentativa de transcrição de áudio com modelo ${modelName} falhou, tentando próximo...`, err);
+      }
+    }
+
+    return '';
+  }
+
   private async callGeminiApi(
+
     input: LlmAnalysisInput
   ): Promise<Omit<AnalysisResponse, 'pii_redacted_count'>> {
     if (!this.genAI) {
