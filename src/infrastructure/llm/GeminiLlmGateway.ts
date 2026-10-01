@@ -15,14 +15,28 @@ export class GeminiLlmGateway implements ILlmGateway {
   }
 
   private getCandidateModels(): string[] {
+    // Apenas nomes de modelos Gemini válidos e atualmente disponíveis na API.
+    // Nomes inexistentes (ex.: "gemini-3.8-flash") fazem a API responder 503/404,
+    // forçando o fallback heurístico sem nunca acionar o LLM real.
     const candidates = [
       this.preferredModel,
-      'gemini-3.8-flash',
-      'gemini-3.6-flash',
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
       'gemini-flash-latest',
     ].filter((m): m is string => Boolean(m && m.trim() !== ''));
 
     return Array.from(new Set(candidates));
+  }
+
+  // Erros transitórios do lado do servidor que justificam nova tentativa com backoff.
+  private isRetriableError(err: unknown): boolean {
+    const status = (err as { status?: number })?.status;
+    return status === 503 || status === 429 || status === 500;
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   public async analyzeContent(
@@ -206,31 +220,49 @@ ${input.sanitizedText}
     let lastError: unknown = null;
 
     for (const modelName of this.getCandidateModels()) {
-      try {
-        const model = this.genAI.getGenerativeModel({
-          model: modelName,
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.2,
-          },
-        });
+      const maxAttempts = 3;
 
-        const response = await model.generateContent(prompt);
-        const textResponse = response.response.text();
-        const parsed = JSON.parse(textResponse);
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const model = this.genAI.getGenerativeModel({
+            model: modelName,
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.2,
+            },
+          });
 
-        return {
-          risk_level: parsed.risk_level as RiskLevel,
-          badge_label: parsed.badge_label || 'Análise Concluída',
-          short_summary: parsed.short_summary,
-          indicators: parsed.indicators || [],
-          sources: input.sources,
-          detailed_explanation: parsed.detailed_explanation,
-          actionable_advice: parsed.actionable_advice || [],
-        };
-      } catch (err) {
-        lastError = err;
-        console.warn(`Tentativa de análise com modelo ${modelName} falhou, tentando próximo candidato...`, err);
+          const response = await model.generateContent(prompt);
+          const textResponse = response.response.text();
+          const parsed = JSON.parse(textResponse);
+
+          return {
+            risk_level: parsed.risk_level as RiskLevel,
+            badge_label: parsed.badge_label || 'Análise Concluída',
+            short_summary: parsed.short_summary,
+            indicators: parsed.indicators || [],
+            sources: input.sources,
+            detailed_explanation: parsed.detailed_explanation,
+            actionable_advice: parsed.actionable_advice || [],
+          };
+        } catch (err) {
+          lastError = err;
+
+          // Erros transitórios (503/429/500): aguarda com backoff exponencial e repete
+          // no mesmo modelo antes de passar ao próximo candidato.
+          if (this.isRetriableError(err) && attempt < maxAttempts) {
+            const backoffMs = 500 * 2 ** (attempt - 1);
+            console.warn(
+              `Modelo ${modelName} retornou erro transitório (tentativa ${attempt}/${maxAttempts}). `
+                + `Repetindo em ${backoffMs}ms...`
+            );
+            await this.delay(backoffMs);
+            continue;
+          }
+
+          console.warn(`Tentativa de análise com modelo ${modelName} falhou, tentando próximo candidato...`, err);
+          break;
+        }
       }
     }
 

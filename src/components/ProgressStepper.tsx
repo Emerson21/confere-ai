@@ -58,7 +58,7 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = () => {
               key={step.id}
               className={`flex items-center gap-4 p-4 rounded-2xl border transition-all duration-300 ${
                 isCurrent
-                  ? 'bg-teal-50/80 border-teal-500 shadow-sm'
+                  ? 'bg-slate-50 border-brand-dark shadow-sm'
                   : isDone
                   ? 'bg-white border-teal-200/80'
                   : 'bg-gray-50/50 border-gray-200 opacity-60'

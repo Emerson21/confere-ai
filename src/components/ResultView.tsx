@@ -80,7 +80,7 @@ export const ResultView: React.FC<ResultViewProps> = ({ analysis, onReset }) => 
       <div className="pt-2">
         <button
           onClick={onReset}
-          className="w-full bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold text-base uppercase rounded-xl h-14 flex items-center justify-center transition shadow-md min-h-[48px] focus:outline-none focus:ring-2 focus:ring-teal-500"
+          className="w-full bg-brand-dark hover:bg-brand-darkHover active:bg-brand-darkActive text-white font-bold text-base uppercase rounded-xl h-14 flex items-center justify-center transition shadow-md min-h-[48px] focus:outline-none focus:ring-2 focus:ring-brand-teal focus:ring-offset-2"
         >
           NOVA VERIFICAÇÃO
         </button>

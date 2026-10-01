@@ -12,6 +12,8 @@ const config: Config = {
         brand: {
           teal: "#0D9488",
           dark: "#111827",
+          darkHover: "#1F2937",
+          darkActive: "#0B1120",
           mint: "#E6FFFA",
           mintBorder: "#99F6E4",
         },

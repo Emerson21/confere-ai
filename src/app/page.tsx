@@ -93,7 +93,7 @@ export default function Home() {
 
             <button
               onClick={handleReset}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-teal-600 text-white font-bold hover:bg-teal-700 transition min-h-[48px] w-full shadow"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-brand-dark text-white font-bold hover:bg-brand-darkHover active:bg-brand-darkActive transition min-h-[48px] w-full shadow focus:outline-none focus:ring-2 focus:ring-brand-teal focus:ring-offset-2"
             >
               <RefreshCw className="w-4 h-4" />
               Tentar Novamente
