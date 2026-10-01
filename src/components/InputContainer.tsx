@@ -144,7 +144,8 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
 
     try {
       // 2. Solicitar acesso ao microfone
-      mediaStreamRef.current = await navigator.mediaDevices.getUserMedia({audio: true});
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
 
       // 3. Configurar formato de áudio suportado pelo navegador móvel
       let selectedMimeType = '';
