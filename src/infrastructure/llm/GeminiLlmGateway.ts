@@ -44,10 +44,19 @@ export class GeminiLlmGateway implements ILlmGateway {
   public async extractTextFromImage(base64Content: string): Promise<string> {
     const [firstLine, ...restLines] = base64Content.split('\n');
     const userComment = restLines.join('\n').trim();
-    const dataUrlMatch = firstLine.trim().match(/^data:([^;]+);base64,(.+)$/);
 
-    const mimeType = dataUrlMatch ? dataUrlMatch[1] : 'image/jpeg';
-    const base64Data = dataUrlMatch ? dataUrlMatch[2] : firstLine.trim();
+    let mimeType = 'image/jpeg';
+    let base64Data = firstLine.trim();
+
+    if (base64Data.includes(',')) {
+      const commaIndex = base64Data.indexOf(',');
+      const header = base64Data.slice(0, commaIndex);
+      base64Data = base64Data.slice(commaIndex + 1);
+      const mimeMatch = header.match(/^data:([^;]+)/);
+      if (mimeMatch) {
+        mimeType = mimeMatch[1].split(';')[0].trim();
+      }
+    }
 
     if (this.genAI && base64Data) {
       const extractionPrompt = `Você é o módulo de visão computacional e OCR do assistente antifraude "Confere Aí".
@@ -81,7 +90,7 @@ Não invente informações. Retorne apenas a descrição do contexto visual segu
               : `[Conteúdo extraído da imagem]:\n${extractedText}`;
           }
         } catch (err) {
-          console.warn(`Tentativa de OCR com modelo ${modelName} falhou, tentando próximo candidato...`, err);
+          console.error(`Tentativa de OCR com modelo ${modelName} falhou:`, err);
         }
       }
     }
@@ -90,18 +99,31 @@ Não invente informações. Retorne apenas a descrição do contexto visual segu
   }
 
   public async transcribeAudio(base64Audio: string, mimeType?: string): Promise<string> {
-    const dataUrlMatch = base64Audio.match(/^data:([^;]+);base64,(.+)$/);
-    const cleanMimeType = dataUrlMatch ? dataUrlMatch[1] : (mimeType || 'audio/webm');
-    const cleanData = dataUrlMatch ? dataUrlMatch[2] : base64Audio;
+    let cleanMimeType = mimeType || 'audio/webm';
+    let cleanData = base64Audio.trim();
+
+    if (cleanData.includes(',')) {
+      const commaIndex = cleanData.indexOf(',');
+      const header = cleanData.slice(0, commaIndex);
+      cleanData = cleanData.slice(commaIndex + 1).trim();
+      const mimeMatch = header.match(/^data:([^;]+)/);
+      if (mimeMatch) {
+        cleanMimeType = mimeMatch[1];
+      }
+    }
+
+    // Remove parâmetros extras como ;codecs=opus (Gemini aceita apenas ex: audio/webm ou audio/mp4)
+    cleanMimeType = cleanMimeType.split(';')[0].trim() || 'audio/webm';
 
     if (!this.genAI || !cleanData) {
       return '';
     }
 
     const prompt = `Você é o módulo de reconhecimento de voz do assistente Confere Aí.
-Transcreva com total fidelidade em português brasileiro (pt-BR) tudo o que foi falado no áudio pelo usuário.
-Retorne EXCLUSIVAMENTE o texto transcrito, sem introduções, sem aspas e sem comentários adicionais.
-Se não houver fala clara ou apenas ruído de fundo, retorne vazio.`;
+Sua missão é ouvir o áudio fornecido pelo usuário e transcrever com total fidelidade em português brasileiro (pt-BR) exatamente o que foi dito.
+Retorne EXCLUSIVAMENTE o texto transcrito falado.
+Não adicione aspas, não adicione introduções e não adicione explicações.
+Se o áudio contiver apenas ruído de fundo ou silêncio absoluto sem voz humana discernível, retorne uma string vazia.`;
 
     for (const modelName of this.getCandidateModels()) {
       try {
@@ -127,12 +149,13 @@ Se não houver fala clara ou apenas ruído de fundo, retorne vazio.`;
           return text;
         }
       } catch (err) {
-        console.warn(`Tentativa de transcrição de áudio com modelo ${modelName} falhou, tentando próximo...`, err);
+        console.error(`Tentativa de transcrição de áudio com modelo ${modelName} (${cleanMimeType}) falhou:`, err);
       }
     }
 
     return '';
   }
+
 
   private async callGeminiApi(
 

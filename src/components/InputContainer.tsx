@@ -45,6 +45,9 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
       try {
         if (isUnmounting) {
           mediaRecorderRef.current.onstop = null;
+        } else {
+          // Garante que todo o buffer de áudio seja despejado antes de parar
+          mediaRecorderRef.current.requestData();
         }
         mediaRecorderRef.current.stop();
       } catch (e) {
@@ -65,6 +68,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
     }
     setIsRecording(false);
   };
+
 
   const handleToggleAudio = async () => {
     if (isRecording) {
@@ -142,10 +146,11 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
           type: selectedMimeType || 'audio/webm',
         });
 
-        // Se o áudio gravado for menor que 800 bytes, ignora clique acidental
-        if (audioBlob.size < 800) {
+        // Se o áudio gravado for menor que 100 bytes, ignora clique acidental
+        if (audioBlob.size < 100) {
           return;
         }
+
 
         setIsTranscribing(true);
         try {

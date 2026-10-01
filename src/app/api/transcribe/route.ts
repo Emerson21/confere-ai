@@ -46,7 +46,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const { audioBase64, mimeType } = validation.data;
+    console.log(`[Transcribe] Recebido áudio de ${audioBase64.length} caracteres, mimeType: ${mimeType}`);
     const transcription = await llmGateway.transcribeAudio(audioBase64, mimeType);
+    console.log(`[Transcribe] Resultado da transcrição (${transcription.length} chars): "${transcription.slice(0, 100)}"`);
 
     return NextResponse.json(
       {
@@ -54,6 +56,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       },
       { status: 200 }
     );
+
   } catch (error) {
     console.error('Erro na rota /api/transcribe:', error);
     return NextResponse.json(
