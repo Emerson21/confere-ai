@@ -1,14 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  Mic,
-  Square,
-  Camera,
-  Lock,
-  Loader2,
-  AlertCircle,
-  CheckCircle2,
-  FileAudio,
-} from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle2, FileAudio, Loader2, Lock, Mic, Square, } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface InputContainerProps {
   onSubmit: (content: string, contentType: 'text' | 'url' | 'image_base64') => void;
@@ -144,8 +135,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
 
     try {
       // 2. Solicitar acesso ao microfone
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
+      mediaStreamRef.current = await navigator.mediaDevices.getUserMedia({audio: true});
 
       // 3. Configurar formato de áudio suportado pelo navegador móvel
       let selectedMimeType = '';
@@ -168,7 +158,8 @@ export const InputContainer: React.FC<InputContainerProps> = ({ onSubmit, isLoad
       audioChunksRef.current = [];
       speechRecognizedRef.current = false;
 
-      let mediaRecorder: MediaRecorder | null = null;
+      const stream = mediaStreamRef.current;
+      let mediaRecorder: MediaRecorder;
       try {
         mediaRecorder = selectedMimeType
           ? new MediaRecorder(stream, { mimeType: selectedMimeType })
