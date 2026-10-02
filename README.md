@@ -1,4 +1,13 @@
-# Confere Aí — Assistente Inteligente Contra Golpes e Desinformação
+<p align="center">
+  <img src="public/logo_ca.svg" alt="Confere Aí" height="100" />
+  <br />
+  <span style="font-size: 80px; color: #ffffff; font-weight: 700;">Confere Aí</span>
+  <br />
+  <span style="font-size: 30px; color: #ffffff; font-weight: 400;">Assistente Inteligente Contra Golpes e Desinformação</span>
+</p>
+
+---
+
 ## FIAP Tech4Change 2026 | "Potencializando o Ser Humano com Inteligência Artificial"
 
 [![CI Tests](https://img.shields.io/badge/tests-27%20passed-success)](tests/)

@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   description:
     'Antes de acreditar, clicar ou compartilhar, confira. Análise inteligente e segura de mensagens, links e boletos com privacidade garantida.',
   robots: 'index, follow',
+  icons: {
+    icon: '/logo_ca.svg',
+    shortcut: '/logo_ca.svg',
+    apple: '/logo_ca.svg',
+  },
 };
 
 export const viewport: Viewport = {
